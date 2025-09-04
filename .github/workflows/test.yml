@@ -33,6 +33,7 @@ jobs:
 
       - name: Run integration tests
         run: |
+          make install
           make test
 
       - name: Print logs
