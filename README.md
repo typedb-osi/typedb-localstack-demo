@@ -7,6 +7,26 @@ Sample app that demonstrates how to use TypeDB + LocalStack, to develop and test
 * Docker
 * LocalStack Pro (free trial available [here](https://app.localstack.cloud))
 * `localstack` CLI
+* `terraform` CLI
+
+## Enable the TypeDB Extension
+
+To enable the TypeDB extension in LocalStack, use this command:
+```
+$ localstack extensions install "git+https://github.com/whummer/localstack-utils.git#egg=localstack-typedb&subdirectory=localstack-typedb"
+```
+
+## Deploy and Run the App
+
+To deploy the sample app to LocalStack, run the following `make` target:
+```
+$ make tf-deploy
+```
+
+Once the app is deployed, we can run some HTTP requests against the local API Gateway, which spawns a local Lambda function, and interacts with local TypeDB:
+```
+$ make requests
+```
 
 ## License
 

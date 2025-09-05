@@ -1,3 +1,6 @@
 .idea/
 .venv/
 *.pyc
+.terraform*
+build/
+terraform.tfstate*
