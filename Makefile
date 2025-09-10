@@ -30,8 +30,8 @@ tf-deploy:      ## Deploy the app locally via Terraform
 
 requests:       ## Send a couple of test requests to create entries in the database
 	endpoint=http://users-api.execute-api.localhost.localstack.cloud:4566/test/users; \
-		curl -H 'content-type: application/json' -d '{"name":"Alice","age":42}' $$endpoint; \
-		curl -H 'content-type: application/json' -d '{"name":"Bob","age":31}' $$endpoint; \
+		curl -H 'content-type: application/json' -d '{"username":"alice","email":["alice@example.com","alice.work@company.com"],"profile_picture_uri":"https://example.com/alice.jpg"}' $$endpoint; \
+		curl -H 'content-type: application/json' -d '{"username":"bob","email":"bob@example.com"}' $$endpoint; \
 		curl $$endpoint
 
 format:		    ## Run ruff to format the whole codebase
