@@ -16,6 +16,17 @@ To enable the TypeDB extension in LocalStack, use this command:
 $ localstack extensions install "git+https://github.com/whummer/localstack-utils.git#egg=localstack-typedb&subdirectory=localstack-typedb"
 ```
 
+## Start localstack
+
+```
+$ localstack start
+```
+
+Note: mac users may need to also run
+```
+$ sudo /Applications/Docker.app/Contents/MacOS/install vmnetd
+```
+
 ## Deploy and Run the App
 
 To deploy the sample app to LocalStack, run the following `make` target:
