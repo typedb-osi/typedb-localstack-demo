@@ -17,6 +17,18 @@ def _transaction_options():
     """Get transaction options with configured timeout"""
     return TransactionOptions(transaction_timeout_millis=10_000)
 
+def _cors_response(status_code, body):
+    """Create a response with CORS headers"""
+    return {
+        "statusCode": status_code,
+        "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization"
+        },
+        "body": json.dumps(body) if isinstance(body, dict) else body
+    }
+
 def handler(event, context):
     logger.debug(f"Lambda invoked with event: {json.dumps(event, default=str)}")
     
@@ -26,74 +38,78 @@ def handler(event, context):
     
     logger.debug(f"Processing {method} request to {path}")
 
+    # Handle CORS preflight requests
+    if method == "OPTIONS":
+        return _cors_response(200, "")
+
     try:
         # Route based on path and method
         if path == "/users":
             if method == "GET":
                 result = list_users()
-                return {"statusCode": 200, "body": json.dumps(result)}
+                return _cors_response(200, result)
             elif method == "POST":
                 payload = json.loads(event["body"])
                 result = create_user(payload)
-                return {"statusCode": 201, "body": json.dumps(result)}
+                return _cors_response(201, result)
         elif path == "/groups":
             if method == "GET":
                 result = list_groups()
-                return {"statusCode": 200, "body": json.dumps(result)}
+                return _cors_response(200, result)
             elif method == "POST":
                 payload = json.loads(event["body"])
                 result = create_group(payload)
-                return {"statusCode": 201, "body": json.dumps(result)}
+                return _cors_response(201, result)
         elif path.startswith("/groups/") and path.endswith("/members"):
             # Extract group_name from path like /groups/{group_name}/members
             group_name = path.split("/")[2]
             if method == "GET":
                 result = list_direct_group_members(group_name)
-                return {"statusCode": 200, "body": json.dumps(result)}
+                return _cors_response(200, result)
             elif method == "POST":
                 payload = json.loads(event["body"])
                 result = add_member_to_group(group_name, payload)
-                return {"statusCode": 201, "body": json.dumps(result)}
+                return _cors_response(201, result)
         elif path.startswith("/groups/") and path.endswith("/all-members"):
             # Extract group_name from path like /groups/{group_name}/all-members
             group_name = path.split("/")[2]
             if method == "GET":
                 result = list_all_group_members(group_name)
-                return {"statusCode": 200, "body": json.dumps(result)}
+                return _cors_response(200, result)
         elif path.startswith("/users/") and path.endswith("/groups"):
             # Extract username from path like /users/{username}/groups
             username = path.split("/")[2]
             if method == "GET":
                 result = list_principal_groups(username, "user")
-                return {"statusCode": 200, "body": json.dumps(result)}
+                return _cors_response(200, result)
         elif path.startswith("/users/") and path.endswith("/all-groups"):
             # Extract username from path like /users/{username}/all-groups
             username = path.split("/")[2]
             if method == "GET":
                 result = list_all_principal_groups(username, "user")
-                return {"statusCode": 200, "body": json.dumps(result)}
+                return _cors_response(200, result)
         elif path.startswith("/groups/") and path.endswith("/groups"):
             # Extract group_name from path like /groups/{group_name}/groups
             group_name = path.split("/")[2]
             if method == "GET":
                 result = list_principal_groups(group_name, "group")
-                return {"statusCode": 200, "body": json.dumps(result)}
+                return _cors_response(200, result)
         elif path.startswith("/groups/") and path.endswith("/all-groups"):
             # Extract group_name from path like /groups/{group_name}/all-groups
             group_name = path.split("/")[2]
             if method == "GET":
                 result = list_all_principal_groups(group_name, "group")
-                return {"statusCode": 200, "body": json.dumps(result)}
+                return _cors_response(200, result)
         elif path == "/reset":
             if method == "POST":
                 result = reset_database()
-                return {"statusCode": 200, "body": json.dumps(result)}
+                return _cors_response(200, result)
         
         logger.debug(f"No route found for {method} request to {path}")
-        return {"statusCode": 404, "body": json.dumps({"error": "Not found"})}
+        return _cors_response(404, {"error": "Not found"})
     except Exception as e:
         logger.debug(f"Error processing request: {str(e)}")
-        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+        return _cors_response(400, {"error": str(e)})
 
 
 def create_user(payload: dict):

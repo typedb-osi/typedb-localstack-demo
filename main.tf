@@ -438,3 +438,157 @@ output "group_all_groups_endpoint" {
   value = "http://${aws_api_gateway_rest_api.user_api.id}.execute-api.localhost.localstack.cloud:4566/test/groups/{group_name}/all-groups"
   description = "Group all groups API endpoint (replace {group_name} with actual group name)"
 }
+
+# CORS OPTIONS methods for all endpoints
+resource "aws_api_gateway_method" "users_options_method" {
+  rest_api_id   = aws_api_gateway_rest_api.user_api.id
+  resource_id   = aws_api_gateway_resource.user_resource.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "users_options_integration" {
+  rest_api_id = aws_api_gateway_rest_api.user_api.id
+  resource_id = aws_api_gateway_resource.user_resource.id
+  http_method = aws_api_gateway_method.users_options_method.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.user_lambda.invoke_arn
+}
+
+resource "aws_api_gateway_method" "groups_options_method" {
+  rest_api_id   = aws_api_gateway_rest_api.user_api.id
+  resource_id   = aws_api_gateway_resource.group_resource.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "groups_options_integration" {
+  rest_api_id = aws_api_gateway_rest_api.user_api.id
+  resource_id = aws_api_gateway_resource.group_resource.id
+  http_method = aws_api_gateway_method.groups_options_method.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.user_lambda.invoke_arn
+}
+
+resource "aws_api_gateway_method" "group_members_options_method" {
+  rest_api_id   = aws_api_gateway_rest_api.user_api.id
+  resource_id   = aws_api_gateway_resource.group_members_nested_resource.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "group_members_options_integration" {
+  rest_api_id = aws_api_gateway_rest_api.user_api.id
+  resource_id = aws_api_gateway_resource.group_members_nested_resource.id
+  http_method = aws_api_gateway_method.group_members_options_method.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.user_lambda.invoke_arn
+}
+
+resource "aws_api_gateway_method" "group_all_members_options_method" {
+  rest_api_id   = aws_api_gateway_rest_api.user_api.id
+  resource_id   = aws_api_gateway_resource.group_all_members_nested_resource.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "group_all_members_options_integration" {
+  rest_api_id = aws_api_gateway_rest_api.user_api.id
+  resource_id = aws_api_gateway_resource.group_all_members_nested_resource.id
+  http_method = aws_api_gateway_method.group_all_members_options_method.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.user_lambda.invoke_arn
+}
+
+resource "aws_api_gateway_method" "user_groups_options_method" {
+  rest_api_id   = aws_api_gateway_rest_api.user_api.id
+  resource_id   = aws_api_gateway_resource.user_groups_final_resource.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "user_groups_options_integration" {
+  rest_api_id = aws_api_gateway_rest_api.user_api.id
+  resource_id = aws_api_gateway_resource.user_groups_final_resource.id
+  http_method = aws_api_gateway_method.user_groups_options_method.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.user_lambda.invoke_arn
+}
+
+resource "aws_api_gateway_method" "user_all_groups_options_method" {
+  rest_api_id   = aws_api_gateway_rest_api.user_api.id
+  resource_id   = aws_api_gateway_resource.user_all_groups_final_resource.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "user_all_groups_options_integration" {
+  rest_api_id = aws_api_gateway_rest_api.user_api.id
+  resource_id = aws_api_gateway_resource.user_all_groups_final_resource.id
+  http_method = aws_api_gateway_method.user_all_groups_options_method.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.user_lambda.invoke_arn
+}
+
+resource "aws_api_gateway_method" "group_groups_options_method" {
+  rest_api_id   = aws_api_gateway_rest_api.user_api.id
+  resource_id   = aws_api_gateway_resource.group_groups_nested_resource.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "group_groups_options_integration" {
+  rest_api_id = aws_api_gateway_rest_api.user_api.id
+  resource_id = aws_api_gateway_resource.group_groups_nested_resource.id
+  http_method = aws_api_gateway_method.group_groups_options_method.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.user_lambda.invoke_arn
+}
+
+resource "aws_api_gateway_method" "group_all_groups_options_method" {
+  rest_api_id   = aws_api_gateway_rest_api.user_api.id
+  resource_id   = aws_api_gateway_resource.group_all_groups_nested_resource.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "group_all_groups_options_integration" {
+  rest_api_id = aws_api_gateway_rest_api.user_api.id
+  resource_id = aws_api_gateway_resource.group_all_groups_nested_resource.id
+  http_method = aws_api_gateway_method.group_all_groups_options_method.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.user_lambda.invoke_arn
+}
+
+resource "aws_api_gateway_method" "reset_options_method" {
+  rest_api_id   = aws_api_gateway_rest_api.user_api.id
+  resource_id   = aws_api_gateway_resource.reset_resource.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "reset_options_integration" {
+  rest_api_id = aws_api_gateway_rest_api.user_api.id
+  resource_id = aws_api_gateway_resource.reset_resource.id
+  http_method = aws_api_gateway_method.reset_options_method.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.user_lambda.invoke_arn
+}

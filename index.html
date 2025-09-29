@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TypeDB User & Group Management</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h2>Management</h2>
+            <div class="tabs">
+                <button class="tab-button active" onclick="showTab('users')">Users</button>
+                <button class="tab-button" onclick="showTab('groups')">Groups</button>
+            </div>
+            
+            <!-- Users Tab -->
+            <div id="users-tab" class="tab-content active">
+                <div class="section-header">
+                    <h3>Users</h3>
+                    <button class="add-button" onclick="showAddUserForm()">+ Add User</button>
+                </div>
+                <div id="users-list" class="list">
+                    <!-- Users will be populated here -->
+                </div>
+            </div>
+            
+            <!-- Groups Tab -->
+            <div id="groups-tab" class="tab-content">
+                <div class="section-header">
+                    <h3>Groups</h3>
+                    <button class="add-button" onclick="showAddGroupForm()">+ Add Group</button>
+                </div>
+                <div id="groups-list" class="list">
+                    <!-- Groups will be populated here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <div id="welcome-message" class="welcome">
+                <h2>Welcome to TypeDB User & Group Management</h2>
+                <p>Select a user or group from the sidebar to view details.</p>
+            </div>
+            
+            <!-- User Details -->
+            <div id="user-details" class="details-panel" style="display: none;">
+                <h3 id="user-name"></h3>
+                <div class="detail-section">
+                    <h4>User Information</h4>
+                    <div id="user-info"></div>
+                </div>
+                <div class="detail-section">
+                    <h4>Direct Groups</h4>
+                    <div id="user-direct-groups"></div>
+                </div>
+                <div class="detail-section">
+                    <h4>All Groups (Including Indirect)</h4>
+                    <div id="user-all-groups"></div>
+                </div>
+            </div>
+            
+            <!-- Group Details -->
+            <div id="group-details" class="details-panel" style="display: none;">
+                <h3 id="group-name"></h3>
+                <div class="detail-section">
+                    <h4>Group Information</h4>
+                    <div id="group-info"></div>
+                </div>
+                <div class="detail-section">
+                    <h4>Direct Groups This Group Is A Member Of</h4>
+                    <div id="group-parent-groups"></div>
+                </div>
+                <div class="detail-section">
+                    <h4>Direct Groups Within This Group</h4>
+                    <div id="group-child-groups"></div>
+                </div>
+                <div class="detail-section">
+                    <h4>All Groups This Group Is A Member Of (Including Indirect)</h4>
+                    <div id="group-all-parent-groups"></div>
+                </div>
+                <div class="detail-section">
+                    <h4>All Groups Within This Group (Including Indirect)</h4>
+                    <div id="group-all-child-groups"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add User Modal -->
+    <div id="add-user-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('add-user-modal')">&times;</span>
+            <h3>Add New User</h3>
+            <form id="add-user-form">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="profile-picture">Profile Picture URL (optional):</label>
+                    <input type="url" id="profile-picture" name="profile-picture">
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="closeModal('add-user-modal')">Cancel</button>
+                    <button type="submit">Add User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Add Group Modal -->
+    <div id="add-group-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('add-group-modal')">&times;</span>
+            <h3>Add New Group</h3>
+            <form id="add-group-form">
+                <div class="form-group">
+                    <label for="group-name">Group Name:</label>
+                    <input type="text" id="group-name" name="group-name" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="closeModal('add-group-modal')">Cancel</button>
+                    <button type="submit">Add Group</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
