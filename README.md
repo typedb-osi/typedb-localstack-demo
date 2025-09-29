@@ -19,10 +19,12 @@ $ localstack extensions install "git+https://github.com/whummer/localstack-utils
 ## Start localstack
 
 ```
-$ localstack start
+$ DOCKER_FLAGS='-e TYPEDB_FLAGS=--development-mode.enabled=true' localstack start
 ```
 
-Note: mac users may need to also run
+(Note: developers of this repo should set the development mode flag to true to disable TypeDB's analytics)
+
+Mac users may need to also run
 ```
 $ sudo /Applications/Docker.app/Contents/MacOS/install vmnetd
 ```

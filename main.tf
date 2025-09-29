@@ -51,6 +51,13 @@ resource "aws_api_gateway_resource" "user_resource" {
   path_part   = "users"
 }
 
+# API Gateway resource 'reset'
+resource "aws_api_gateway_resource" "reset_resource" {
+  rest_api_id = aws_api_gateway_rest_api.user_api.id
+  parent_id   = aws_api_gateway_rest_api.user_api.root_resource_id
+  path_part   = "reset"
+}
+
 # API Gateway resource 'user groups' (nested under users)
 resource "aws_api_gateway_resource" "user_groups_resource" {
   rest_api_id = aws_api_gateway_rest_api.user_api.id
@@ -146,6 +153,25 @@ resource "aws_api_gateway_integration" "lambda_list_integration" {
   rest_api_id = aws_api_gateway_rest_api.user_api.id
   resource_id = aws_api_gateway_resource.user_resource.id
   http_method = aws_api_gateway_method.list_users_method.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.user_lambda.invoke_arn
+}
+
+# API Gateway method 'reset'
+resource "aws_api_gateway_method" "reset_method" {
+  rest_api_id   = aws_api_gateway_rest_api.user_api.id
+  resource_id   = aws_api_gateway_resource.reset_resource.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+# API Gateway integration 'reset'
+resource "aws_api_gateway_integration" "lambda_reset_integration" {
+  rest_api_id = aws_api_gateway_rest_api.user_api.id
+  resource_id = aws_api_gateway_resource.reset_resource.id
+  http_method = aws_api_gateway_method.reset_method.http_method
 
   integration_http_method = "POST"
   type                   = "AWS_PROXY"
@@ -331,6 +357,7 @@ resource "aws_api_gateway_deployment" "user_api_deployment" {
   depends_on = [
     aws_api_gateway_integration.lambda_integration,
     aws_api_gateway_integration.lambda_list_integration,
+    aws_api_gateway_integration.lambda_reset_integration,
     aws_api_gateway_integration.lambda_create_group_integration,
     aws_api_gateway_integration.lambda_list_groups_integration,
     aws_api_gateway_integration.lambda_add_group_member_integration,
@@ -354,6 +381,11 @@ resource "aws_api_gateway_stage" "stage" {
   deployment_id = aws_api_gateway_deployment.user_api_deployment.id
   rest_api_id   = aws_api_gateway_rest_api.user_api.id
   stage_name    = "test"
+  
+  # Force recreation when deployment changes
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Output the API Gateway endpoints
@@ -370,6 +402,11 @@ output "users_endpoint" {
 output "groups_endpoint" {
   value = "http://${aws_api_gateway_rest_api.user_api.id}.execute-api.localhost.localstack.cloud:4566/test/groups"
   description = "Groups API endpoint"
+}
+
+output "reset_endpoint" {
+  value = "http://${aws_api_gateway_rest_api.user_api.id}.execute-api.localhost.localstack.cloud:4566/test/reset"
+  description = "Reset database API endpoint"
 }
 
 output "group_members_endpoint" {

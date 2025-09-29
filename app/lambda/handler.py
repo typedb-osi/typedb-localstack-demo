@@ -1,16 +1,31 @@
 import json
+import sys
+import time
+import logging
 
-from typedb.driver import TypeDB, Credentials, DriverOptions, TransactionType
+from typedb.driver import TypeDB, Credentials, DriverOptions, TransactionType, TransactionOptions
+
+# Setup TRACE logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)  
 
 db_name = "test-db"
 server_host = "typedb.localhost.localstack.cloud:4566"
 
 
+def _transaction_options():
+    """Get transaction options with configured timeout"""
+    return TransactionOptions(transaction_timeout_millis=10_000)
+
 def handler(event, context):
+    logger.debug(f"Lambda invoked with event: {json.dumps(event, default=str)}")
+    
     _create_database_and_schema()
     method = event["httpMethod"]
     path = event.get("path", "")
     
+    logger.debug(f"Processing {method} request to {path}")
+
     try:
         # Route based on path and method
         if path == "/users":
@@ -69,13 +84,20 @@ def handler(event, context):
             if method == "GET":
                 result = list_all_principal_groups(group_name, "group")
                 return {"statusCode": 200, "body": json.dumps(result)}
+        elif path == "/reset":
+            if method == "POST":
+                result = reset_database()
+                return {"statusCode": 200, "body": json.dumps(result)}
         
+        logger.debug(f"No route found for {method} request to {path}")
         return {"statusCode": 404, "body": json.dumps({"error": "Not found"})}
     except Exception as e:
+        logger.debug(f"Error processing request: {str(e)}")
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
 
 def create_user(payload: dict):
+    logger.debug(f"Creating user")
     # Validate required fields
     if "username" not in payload:
         raise ValueError("Username is required")
@@ -92,51 +114,71 @@ def create_user(payload: dict):
     # Optional fields
     profile_picture_uri = payload.get("profile_picture_uri", "")
     
-    with _driver() as driver:
-        with driver.transaction(db_name, TransactionType.WRITE) as tx:
-            # Create user with username
-            query = f"insert $u isa user, has user-name '{username}'"
-            
-            # Add all emails
-            for email in emails:
-                query += f", has email '{email}'"
-            
-            # Add profile picture if provided - check if it's HTTP URL or S3 identifier
-            if profile_picture_uri:
-                if profile_picture_uri.startswith("http"):
-                    query += f", has profile-picture-url '{profile_picture_uri}'"
-                else:
-                    query += f", has profile-picture-s3-uri '{profile_picture_uri}'"
-            
-            query += ";"
-            
-            tx.query(query).resolve()
-            tx.commit()
+    try:
+        with _driver() as driver:
+            with driver.transaction(db_name, TransactionType.WRITE, _transaction_options()) as tx:
+                # Create user with username
+                query = f"insert $u isa user, has user-name '{username}'"
+                
+                # Add all emails
+                for email in emails:
+                    query += f", has email '{email}'"
+                
+                # Add profile picture if provided - check if it's HTTP URL or S3 identifier
+                if profile_picture_uri:
+                    if profile_picture_uri.startswith("http"):
+                        query += f", has profile-picture-url '{profile_picture_uri}'"
+                    else:
+                        query += f", has profile-picture-s3-uri '{profile_picture_uri}'"
+                
+                query += ";"
+                
+                tx.query(query).resolve()
+                tx.commit()
+        
+        return {"message": "User created successfully", "username": username, "email": emails}
     
-    return {"message": "User created successfully", "username": username, "email": emails}
+    except Exception as e:
+        error_msg = str(e)
+        if "DVL9" in error_msg and "key constraint violation" in error_msg:
+            raise ValueError(f"User '{username}' already exists")
+        else:
+            raise e
 
 
 def create_group(payload: dict):
+    logger.debug(f"Creating group")
     # Validate required fields
     if "group_name" not in payload:
         raise ValueError("Group name is required")
     
     group_name = payload["group_name"]
     
-    with _driver() as driver:
-        with driver.transaction(db_name, TransactionType.WRITE) as tx:
-            # Create group with group name
-            query = f"insert $g isa group, has group-name '{group_name}';"
+    try:
+        with _driver() as driver:
+            with driver.transaction(db_name, TransactionType.WRITE, _transaction_options()) as tx:
+                # Create group with group name
+                query = f"insert $g isa group, has group-name '{group_name}';"
+                
+                tx.query(query).resolve()
+                tx.commit()
             
-            tx.query(query).resolve()
-            tx.commit()
+        return {"message": "Group created successfully", "group_name": group_name}
     
-    return {"message": "Group created successfully", "group_name": group_name}
+    except Exception as e:
+        error_msg = str(e)
+        if "DVL9" in error_msg and "key constraint violation" in error_msg:
+            raise ValueError(f"Group '{group_name}' already exists")
+        else:
+            raise e
 
 
 def list_users():
+    logger.debug("Listing users")
     with _driver() as driver:
-        with driver.transaction(db_name, TransactionType.READ) as tx:
+        logger.debug("Listing users - opened driver")
+        with driver.transaction(db_name, TransactionType.WRITE, _transaction_options()) as tx:
+            logger.debug("Listing users - opened transaction")
             result = tx.query(
                 'match $u isa user; '
                 'fetch {'
@@ -147,12 +189,15 @@ def list_users():
                 '};'
             ).resolve()
             result = list(result)
+            tx.commit()
+        
     return result
 
 
 def list_groups():
+    logger.debug("Listing groups")
     with _driver() as driver:
-        with driver.transaction(db_name, TransactionType.READ) as tx:
+        with driver.transaction(db_name, TransactionType.WRITE, _transaction_options()) as tx:
             result = tx.query(
                 'match $g isa group; '
                 'fetch {'
@@ -160,10 +205,14 @@ def list_groups():
                 '};'
             ).resolve()
             result = list(result)
+            tx.commit()
+        
     return result
 
 
 def add_member_to_group(group_name: str, payload: dict):
+    logger.debug(f"Adding member to group")
+
     # Validate required fields - either username or group_name must be provided
     if "username" not in payload and "group_name" not in payload:
         raise ValueError("Either 'username' or 'group_name' is required")
@@ -172,7 +221,7 @@ def add_member_to_group(group_name: str, payload: dict):
         raise ValueError("Provide either 'username' or 'group_name', not both")
     
     with _driver() as driver:
-        with driver.transaction(db_name, TransactionType.WRITE) as tx:
+        with driver.transaction(db_name, TransactionType.WRITE, _transaction_options()) as tx:
             if "username" in payload:
                 # Adding a user to the group
                 username = payload["username"]
@@ -181,7 +230,7 @@ def add_member_to_group(group_name: str, payload: dict):
                     f"  $member isa user, has user-name '{username}'; "
                     f"  $group isa group, has group-name '{group_name}'; "
                     f"put "
-                    f"  $membership (container: $group, member: $member) isa membership;"
+                    f"  $membership isa membership (container: $group, member: $member);"
                 )
                 member_type = "user"
                 member_name = username
@@ -193,14 +242,14 @@ def add_member_to_group(group_name: str, payload: dict):
                     f"  $member isa group, has group-name '{member_group_name}'; "
                     f"  $group isa group, has group-name '{group_name}'; "
                     f"put "
-                    f"  $membership (container: $group, member: $member) isa membership;"
+                    f"  $membership isa membership (container: $group, member: $member);"
                 )
                 member_type = "group"
                 member_name = member_group_name
-            
+        
             tx.query(query).resolve()
             tx.commit()
-    
+        
     return {
         "message": f"{member_type.capitalize()} added to group successfully", 
         "group_name": group_name, 
@@ -210,25 +259,30 @@ def add_member_to_group(group_name: str, payload: dict):
 
 
 def list_direct_group_members(group_name: str):
+    logger.debug(f"Listing direct group members for {group_name}")
     with _driver() as driver:
-        with driver.transaction(db_name, TransactionType.READ) as tx:
+        with driver.transaction(db_name, TransactionType.WRITE, _transaction_options()) as tx:
             result = tx.query(
                 f'match '
                 f'  $group isa group, has group-name "{group_name}"; '
-                f'  membership (container: $group, member: $member); '
+                f'  $membership isa membership (container: $group, member: $member); '
+                f'  $member isa! $member-type; '
                 f'fetch {{'
-                f'  "member_type": $member.isa, '
                 f'  "member_name": $member.name, '
-                f'  "group_name": $member.group-name'
+                f'  "group_name": $group.group-name,'
+                f'  "member_type": $member-type'
                 f'}};'
             ).resolve()
             result = list(result)
+            tx.commit()
+        
     return result
 
 
 def list_all_group_members(group_name: str):
+    logger.debug(f"Listing all group members for {group_name}")
     with _driver() as driver:
-        with driver.transaction(db_name, TransactionType.READ) as tx:
+        with driver.transaction(db_name, TransactionType.WRITE, _transaction_options()) as tx:
             # Use the group-members function from the schema to get all members recursively
             result = tx.query(
                 f'match '
@@ -241,13 +295,16 @@ def list_all_group_members(group_name: str):
                 f'}};'
             ).resolve()
             result = list(result)
+            tx.commit()
+        
     return result
 
 
 def list_principal_groups(principal_name: str, principal_type: str):
     """List direct groups for either a user or group principal"""
+    logger.debug(f"Listing direct groups for {principal_name} of type {principal_type}")
     with _driver() as driver:
-        with driver.transaction(db_name, TransactionType.READ) as tx:
+        with driver.transaction(db_name, TransactionType.WRITE, _transaction_options()) as tx:
             if principal_type == "user":
                 name_attr = "user-name"
             else:  # group
@@ -263,13 +320,16 @@ def list_principal_groups(principal_name: str, principal_type: str):
                 f'}};'
             ).resolve()
             result = list(result)
+            tx.commit()
+        
     return result
 
 
 def list_all_principal_groups(principal_name: str, principal_type: str):
     """List all groups (transitive) for either a user or group principal"""
+    logger.debug(f"Listing all groups for {principal_name} of type {principal_type}")
     with _driver() as driver:
-        with driver.transaction(db_name, TransactionType.READ) as tx:
+        with driver.transaction(db_name, TransactionType.WRITE, _transaction_options()) as tx:
             if principal_type == "user":
                 name_attr = "user-name"
             else:  # group
@@ -285,27 +345,53 @@ def list_all_principal_groups(principal_name: str, principal_type: str):
                 f'}};'
             ).resolve()
             result = list(result)
+            tx.commit()
+        
     return result
 
 
+def reset_database():
+    """Reset the database by deleting it and recreating it with schema"""
+    logger.debug("Resetting database")
+    with _driver() as driver:
+        # Delete database if it exists
+        if driver.databases.contains(db_name):
+            driver.databases.get(db_name).delete()
+            logger.debug(f"Database '{db_name}' deleted")
+        
+        
+    _create_database_and_schema()
+    
+    return {"message": "Database reset successfully"}
+
+
 def _create_database_and_schema():
+    logger.debug("Setting up database and schema")
     with _driver() as driver:
         # Check if database exists, create only if it doesn't
         if db_name not in [db.name for db in driver.databases.all()]:
             driver.databases.create(db_name)
+            logger.debug(f"Database '{db_name}' created")
+        else:
+            logger.debug(f"Database '{db_name}' already exists")
         
         entity_type_count = 0
         # Check if schema already exists by looking for user type
-        with driver.transaction(db_name, TransactionType.READ) as tx:
-            entity_type_count = list(tx.query("match entity $t;").resolve().as_concept_rows()).len()
+        with driver.transaction(db_name, TransactionType.WRITE, _transaction_options()) as tx:
+            entity_type_count = len(list(tx.query("match entity $t;").resolve().as_concept_rows()))
+            tx.commit()
 
         if entity_type_count == 0:
-            with driver.transaction(db_name, TransactionType.SCHEMA) as schema_tx:
+            logger.debug("Loading schema from file")
+            with driver.transaction(db_name, TransactionType.SCHEMA, _transaction_options()) as schema_tx:
                 # Load schema from file
                 with open("schema.tql", "r") as f:
                     schema_content = f.read()
                 schema_tx.query(schema_content).resolve()
                 schema_tx.commit()
+            logger.debug("Schema loaded successfully")
+        else:
+            logger.debug("Schema already exists.")
 
 
 def _driver():
