@@ -35,6 +35,14 @@ jobs:
         run: |
           make install
           make test
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Run Lambda integration tests
+        run: |
+          pip install terraform-local
+          make tf-deploy
           make test-lambda
 
       - name: Print logs
