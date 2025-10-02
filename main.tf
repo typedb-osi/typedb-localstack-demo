@@ -33,6 +33,11 @@ resource "aws_lambda_function" "user_lambda" {
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   runtime         = "python3.11"
   timeout         = 30
+  
+  environment {
+    variables = {
+    }
+  }
 }
 
 # API Gateway
@@ -367,6 +372,16 @@ resource "aws_api_gateway_deployment" "user_api_deployment" {
     aws_api_gateway_integration.lambda_list_all_user_groups_integration,
     aws_api_gateway_integration.lambda_list_group_groups_integration,
     aws_api_gateway_integration.lambda_list_all_group_groups_integration,
+    # OPTIONS integrations
+    aws_api_gateway_integration.users_options_integration,
+    aws_api_gateway_integration.groups_options_integration,
+    aws_api_gateway_integration.group_members_options_integration,
+    aws_api_gateway_integration.group_all_members_options_integration,
+    aws_api_gateway_integration.user_groups_options_integration,
+    aws_api_gateway_integration.user_all_groups_options_integration,
+    aws_api_gateway_integration.group_groups_options_integration,
+    aws_api_gateway_integration.group_all_groups_options_integration,
+    aws_api_gateway_integration.reset_options_integration,
   ]
 
   rest_api_id = aws_api_gateway_rest_api.user_api.id
