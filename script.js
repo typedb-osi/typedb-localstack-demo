@@ -11,8 +11,7 @@ let groups = [];
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    loadUsers();
-    loadGroups();
+    loadInitialData();
     setupEventListeners();
 });
 
@@ -70,22 +69,65 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
         options.body = JSON.stringify(data);
     }
     
+    // Start timing
+    const startTime = performance.now();
+    const timestamp = new Date().toISOString();
+    
     try {
+        console.log(`🚀 API Request [${timestamp}]: ${method} ${endpoint}`, data ? { data } : '');
         const response = await fetch(url, options);
         const result = await response.json();
         
+        // Calculate duration
+        const duration = performance.now() - startTime;
+        
         if (!response.ok) {
+            console.error(`❌ API Error [${duration.toFixed(2)}ms]: ${method} ${endpoint}`, result.error || `HTTP ${response.status}`);
             throw new Error(result.error || `HTTP ${response.status}`);
         }
         
+        console.log(`✅ API Success [${duration.toFixed(2)}ms]: ${method} ${endpoint}`, {
+            status: response.status,
+            dataSize: JSON.stringify(result).length + ' bytes',
+            result: result
+        });
+        
         return result;
     } catch (error) {
-        console.error('API Error:', error);
+        const duration = performance.now() - startTime;
+        console.error(`❌ API Error [${duration.toFixed(2)}ms]: ${method} ${endpoint}`, error);
         throw error;
     }
 }
 
-// Load users
+// Load initial data concurrently
+async function loadInitialData() {
+    try {
+        const startTime = performance.now();
+        console.log('🔄 Loading initial data concurrently...');
+        
+        // Load users and groups in parallel
+        const [usersData, groupsData] = await Promise.all([
+            apiRequest('/users'),
+            apiRequest('/groups')
+        ]);
+        
+        users = usersData;
+        groups = groupsData;
+        
+        // Render both lists
+        renderUsersList();
+        renderGroupsList();
+        
+        const totalDuration = performance.now() - startTime;
+        console.log(`✅ Initial data loaded successfully in ${totalDuration.toFixed(2)}ms (concurrent loading)`);
+    } catch (error) {
+        console.error('Failed to load initial data:', error);
+        showError('Failed to load data: ' + error.message);
+    }
+}
+
+// Load users (for individual reloads)
 async function loadUsers() {
     try {
         users = await apiRequest('/users');
@@ -96,7 +138,7 @@ async function loadUsers() {
     }
 }
 
-// Load groups
+// Load groups (for individual reloads)
 async function loadGroups() {
     try {
         groups = await apiRequest('/groups');
@@ -181,8 +223,16 @@ async function selectUser(user) {
 // Load user groups
 async function loadUserGroups(username) {
     try {
-        // Load direct groups
-        const directGroups = await apiRequest(`/users/${username}/groups`);
+        const startTime = performance.now();
+        console.log(`🔄 Loading user groups concurrently for ${username}...`);
+        
+        // Load direct groups and all groups in parallel
+        const [directGroups, allGroups] = await Promise.all([
+            apiRequest(`/users/${username}/groups`),
+            apiRequest(`/users/${username}/all-groups`)
+        ]);
+        
+        // Render direct groups
         const directGroupsDiv = document.getElementById('user-direct-groups');
         if (directGroups.length > 0) {
             directGroupsDiv.innerHTML = directGroups.map(group => 
@@ -192,8 +242,7 @@ async function loadUserGroups(username) {
             directGroupsDiv.innerHTML = '<span class="group-tag empty">No direct groups</span>';
         }
         
-        // Load all groups (including indirect)
-        const allGroups = await apiRequest(`/users/${username}/all-groups`);
+        // Render all groups
         const allGroupsDiv = document.getElementById('user-all-groups');
         if (allGroups.length > 0) {
             allGroupsDiv.innerHTML = allGroups.map(group => 
@@ -202,6 +251,9 @@ async function loadUserGroups(username) {
         } else {
             allGroupsDiv.innerHTML = '<span class="group-tag empty">No groups</span>';
         }
+        
+        const totalDuration = performance.now() - startTime;
+        console.log(`✅ User groups loaded successfully for ${username} in ${totalDuration.toFixed(2)}ms (concurrent loading)`);
     } catch (error) {
         console.error('Failed to load user groups:', error);
         document.getElementById('user-direct-groups').innerHTML = '<span class="error">Failed to load groups</span>';
@@ -245,8 +297,23 @@ async function selectGroup(group) {
 // Load group relationships
 async function loadGroupRelationships(groupName) {
     try {
-        // Load groups this group is a member of (direct)
-        const parentGroups = await apiRequest(`/groups/${groupName}/groups`);
+        const startTime = performance.now();
+        console.log(`🔄 Loading relationships concurrently for group: ${groupName}`);
+        
+        // Load all group relationship data in parallel
+        const [parentGroups, allParentGroups, directMembers, allMembers] = await Promise.all([
+            apiRequest(`/groups/${groupName}/groups`),
+            apiRequest(`/groups/${groupName}/all-groups`),
+            apiRequest(`/groups/${groupName}/members`),
+            apiRequest(`/groups/${groupName}/all-members`)
+        ]);
+        
+        console.log(`Direct parent groups for ${groupName}:`, parentGroups);
+        console.log(`All parent groups for ${groupName}:`, allParentGroups);
+        console.log(`Direct members for ${groupName}:`, directMembers);
+        console.log(`All members for ${groupName}:`, allMembers);
+        
+        // Render parent groups (direct)
         const parentGroupsDiv = document.getElementById('group-parent-groups');
         if (parentGroups.length > 0) {
             parentGroupsDiv.innerHTML = parentGroups.map(group => 
@@ -256,8 +323,7 @@ async function loadGroupRelationships(groupName) {
             parentGroupsDiv.innerHTML = '<span class="group-tag empty">Not a member of any groups</span>';
         }
         
-        // Load all groups this group is a member of (including indirect)
-        const allParentGroups = await apiRequest(`/groups/${groupName}/all-groups`);
+        // Render parent groups (all including indirect)
         const allParentGroupsDiv = document.getElementById('group-all-parent-groups');
         if (allParentGroups.length > 0) {
             allParentGroupsDiv.innerHTML = allParentGroups.map(group => 
@@ -267,9 +333,9 @@ async function loadGroupRelationships(groupName) {
             allParentGroupsDiv.innerHTML = '<span class="group-tag empty">Not a member of any groups</span>';
         }
         
-        // Load direct members (groups only)
-        const directMembers = await apiRequest(`/groups/${groupName}/members`);
+        // Filter and render direct child groups
         const childGroups = directMembers.filter(member => member.member_type.label === 'group');
+        console.log(`Direct child groups for ${groupName}:`, childGroups);
         const childGroupsDiv = document.getElementById('group-child-groups');
         if (childGroups.length > 0) {
             childGroupsDiv.innerHTML = childGroups.map(member => 
@@ -279,9 +345,9 @@ async function loadGroupRelationships(groupName) {
             childGroupsDiv.innerHTML = '<span class="group-tag empty">No direct groups</span>';
         }
         
-        // Load all members (groups only, including indirect)
-        const allMembers = await apiRequest(`/groups/${groupName}/all-members`);
+        // Filter and render all child groups (including indirect)
         const allChildGroups = allMembers.filter(member => member.member_type.label === 'group');
+        console.log(`All child groups for ${groupName}:`, allChildGroups);
         const allChildGroupsDiv = document.getElementById('group-all-child-groups');
         if (allChildGroups.length > 0) {
             allChildGroupsDiv.innerHTML = allChildGroups.map(member => 
@@ -290,6 +356,9 @@ async function loadGroupRelationships(groupName) {
         } else {
             allChildGroupsDiv.innerHTML = '<span class="group-tag empty">No groups</span>';
         }
+        
+        const totalDuration = performance.now() - startTime;
+        console.log(`✅ Group relationships loaded successfully for ${groupName} in ${totalDuration.toFixed(2)}ms (concurrent loading)`);
     } catch (error) {
         console.error('Failed to load group relationships:', error);
         showError('Failed to load group relationships: ' + error.message);

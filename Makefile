@@ -15,7 +15,7 @@ clean:
 	rm -rf .venv/ build/
 
 install: venv   ## Install dependencies
-	$(VENV_RUN); pip install --upgrade localstack pytest requests ruff terraform-local typedb-driver
+	$(VENV_RUN); pip install --upgrade --index-url=https://repo.typedb.com/public/public-snapshot/python/simple/ localstack pytest requests ruff terraform-local typedb-driver==0.0.0+bf3f4548451b471f9964c550dfcfe07723059482
 
 tf-deploy:      ## Deploy the app locally via Terraform
 	mkdir -p build/lambda
@@ -31,10 +31,10 @@ tf-deploy:      ## Deploy the app locally via Terraform
 test-lambda:    ## Run Lambda API tests
 	$(VENV_RUN); pytest tests/test_lambda.py -v -s
 
+test-extension:		    ## Run integration tests (requires LocalStack running with the Extension installed)
+	$(VENV_RUN); pytest tests/test_extension.py -v -s
+
 format:		    ## Run ruff to format the whole codebase
 	$(VENV_RUN); python -m ruff format .; python -m ruff check --output-format=full --fix .
-
-test:		    ## Run integration tests (requires LocalStack running with the Extension installed)
-	$(VENV_RUN); pytest tests/test_extension.py -v -s
 
 .PHONY: clean install usage venv format test requests test-lambda tf-deploy
