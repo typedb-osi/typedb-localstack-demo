@@ -21,10 +21,10 @@ tf-deploy:      ## Deploy the app locally via Terraform
 	mkdir -p build/lambda
 	cp -r app/lambda/* build/lambda/
 
-	docker run -it --platform=linux/amd64 --rm --entrypoint= -v $(PWD)/build/lambda:/tmp/lambda public.ecr.aws/lambda/python:3.11 pip install --upgrade --target /tmp/lambda -r /tmp/lambda/requirements.txt
+	docker run --platform=linux/amd64 --rm --entrypoint= -v $(PWD)/build/lambda:/tmp/lambda public.ecr.aws/lambda/python:3.11 pip install --upgrade --target /tmp/lambda -r /tmp/lambda/requirements.txt
 
 	##### NOTE: SOMETIMES THE ARM64 VERSION WORKS, SOMETIMES THE AMD64 VERSION WORKS? #####
-	#docker run -it --platform=linux/arm64/v8 --rm --entrypoint= -v $(PWD)/build/lambda:/tmp/lambda public.ecr.aws/lambda/python:3.11 pip install --upgrade --target /tmp/lambda -r /tmp/lambda/requirements.txt
+	#docker run --platform=linux/arm64/v8 --rm --entrypoint= -v $(PWD)/build/lambda:/tmp/lambda public.ecr.aws/lambda/python:3.11 pip install --upgrade --target /tmp/lambda -r /tmp/lambda/requirements.txt
 
 	$(VENV_RUN); tflocal init; tflocal apply -auto-approve
 
@@ -33,6 +33,10 @@ test-lambda:    ## Run Lambda API tests
 
 test-extension:		    ## Run integration tests (requires LocalStack running with the Extension installed)
 	$(VENV_RUN); pytest tests/test_extension.py -v -s
+
+web-ui:		    ## Run the Web UI on localhost port 3000
+	which serve || npm i -g serve
+	serve ./app/web
 
 format:		    ## Run ruff to format the whole codebase
 	$(VENV_RUN); python -m ruff format .; python -m ruff check --output-format=full --fix .
