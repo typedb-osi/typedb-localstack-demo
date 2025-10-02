@@ -1,0 +1,64 @@
+define
+
+# Abstract entity for any actor in the system (user or group).
+# This allows groups to contain other groups (nesting).
+entity principal @abstract,
+  # Principals have an abstract name
+  owns name,
+  # Any principal (a user or another group) can be a member.
+  plays membership:member;
+
+# Represents a human user.
+entity user sub principal,
+  owns email @unique @card(1..),
+  owns user-name @key,
+
+  # one-of multiple types of profile picture
+	owns profile-picture-uri @card(0..1),
+  owns profile-picture-s3-uri,
+  owns profile-picture-url;
+
+# Represents a collection of users and/or other groups.
+entity group sub principal,
+  owns group-name @key,
+  # A group can act as a container for members.
+  plays membership:container;
+
+# Defines the relationship of a principal being a member of a group.
+relation membership,
+  relates container,
+  relates member;
+
+# --- Attributes ---
+attribute name @abstract, value string;
+attribute user-name, sub name;
+attribute group-name, sub name;
+attribute email, value string;
+
+attribute profile-picture-uri @abstract;
+attribute profile-picture-s3-uri, sub profile-picture-uri, value string;
+attribute profile-picture-url, sub profile-picture-uri, value string;
+
+
+# --- Functions ---
+
+fun group-members($group: group) -> { principal }:
+  match
+    {
+      membership (container: $group, member: $member);
+    } or {
+      membership (container: $group, member: $group-member);
+      $group-member isa group;
+      let $member in group-members($group-member);
+    };
+    return { $member };
+
+fun get-groups($principal: principal) -> { group }:
+  match
+    {
+      membership (member: $principal, container: $group);
+    } or {
+      membership (member: $principal, container: $container);
+      let $group in get-groups($container);
+    };
+    return { $group };
