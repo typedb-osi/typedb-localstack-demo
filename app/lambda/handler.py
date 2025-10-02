@@ -42,6 +42,7 @@ def _transaction_options():
 
 def _cors_response(status_code, body):
     """Create a response with CORS headers"""
+    print("!response body", type(body), body)
     return {
         "statusCode": status_code,
         "headers": {

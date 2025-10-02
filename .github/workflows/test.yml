@@ -35,6 +35,7 @@ jobs:
         run: |
           make install
           make test
+          make test-lambda
 
       - name: Print logs
         if: always()

@@ -34,6 +34,10 @@ test-lambda:    ## Run Lambda API tests
 test-extension:		    ## Run integration tests (requires LocalStack running with the Extension installed)
 	$(VENV_RUN); pytest tests/test_extension.py -v -s
 
+web-ui:		    ## Run the Web UI on localhost port 3000
+	which serve || npm i -g serve
+	serve ./app/web
+
 format:		    ## Run ruff to format the whole codebase
 	$(VENV_RUN); python -m ruff format .; python -m ruff check --output-format=full --fix .
 
