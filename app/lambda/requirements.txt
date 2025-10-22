@@ -1,2 +1,1 @@
---index-url=https://repo.typedb.com/public/public-snapshot/python/simple/
-typedb-driver==0.0.0+bf3f4548451b471f9964c550dfcfe07723059482
+requests>=2.25.0
