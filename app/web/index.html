@@ -56,6 +56,12 @@
                 <div class="detail-section">
                     <h4>Direct Groups</h4>
                     <div id="user-direct-groups"></div>
+                    <div class="add-membership-section">
+                        <select id="user-group-select" class="membership-select">
+                            <option value="">Select a group to add...</option>
+                        </select>
+                        <button id="add-user-to-group-btn" class="add-membership-btn" onclick="addUserToGroup()">Add to Group</button>
+                    </div>
                 </div>
                 <div class="detail-section">
                     <h4>All Groups (Including Indirect)</h4>
@@ -73,6 +79,12 @@
                 <div class="detail-section">
                     <h4>Direct parent groups</h4>
                     <div id="group-parent-groups"></div>
+                    <div class="add-membership-section">
+                        <select id="group-parent-select" class="membership-select">
+                            <option value="">Select a parent group...</option>
+                        </select>
+                        <button id="add-group-to-parent-btn" class="add-membership-btn" onclick="addGroupToParent()">Add Parent Group</button>
+                    </div>
                 </div>
                 <div class="detail-section">
                     <h4>Direct child members</h4>

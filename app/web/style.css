@@ -175,11 +175,68 @@ body {
     padding: 5px 10px;
     border-radius: 15px;
     font-size: 12px;
+    margin: 2px;
+    display: inline-block;
 }
 
 .group-tag.empty {
     background-color: #95a5a6;
     font-style: italic;
+}
+
+.user-tag {
+    background-color: #e74c3c;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    margin: 2px;
+    display: inline-block;
+}
+
+/* Add Membership UI */
+.add-membership-section {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #34495e;
+    border-radius: 4px;
+    border: 1px dashed #7f8c8d;
+}
+
+.membership-select {
+    width: 200px;
+    padding: 8px;
+    margin-right: 10px;
+    border: 1px solid #7f8c8d;
+    border-radius: 4px;
+    background-color: #2c3e50;
+    color: white;
+    font-size: 14px;
+}
+
+.membership-select:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.add-membership-btn {
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.add-membership-btn:hover {
+    background-color: #2ecc71;
+}
+
+.add-membership-btn:disabled {
+    background-color: #7f8c8d;
+    cursor: not-allowed;
 }
 
 /* Modal */

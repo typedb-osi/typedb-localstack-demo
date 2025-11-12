@@ -252,6 +252,9 @@ async function loadUserGroups(username) {
             allGroupsDiv.innerHTML = '<span class="group-tag empty">No groups</span>';
         }
         
+        // Populate group dropdown for adding user to groups
+        populateUserGroupDropdown(username, directGroups);
+        
         const totalDuration = performance.now() - startTime;
         console.log(`✅ User groups loaded successfully for ${username} in ${totalDuration.toFixed(2)}ms (concurrent loading)`);
     } catch (error) {
@@ -323,6 +326,9 @@ async function loadGroupRelationships(groupName) {
             parentGroupsDiv.innerHTML = '<span class="group-tag empty">Not a member of any groups</span>';
         }
         
+        // Populate parent group dropdown for adding group to parent
+        populateGroupParentDropdown(groupName, parentGroups);
+        
         // Render parent groups (all including indirect)
         const allParentGroupsDiv = document.getElementById('group-all-parent-groups');
         if (allParentGroups.length > 0) {
@@ -333,28 +339,54 @@ async function loadGroupRelationships(groupName) {
             allParentGroupsDiv.innerHTML = '<span class="group-tag empty">Not a member of any groups</span>';
         }
         
-        // Filter and render direct child groups
-        const childGroups = directMembers.filter(member => member.member_type.label === 'group');
-        console.log(`Direct child groups for ${groupName}:`, childGroups);
-        const childGroupsDiv = document.getElementById('group-child-groups');
-        if (childGroups.length > 0) {
-            childGroupsDiv.innerHTML = childGroups.map(member => 
-                `<span class="group-tag">${member.member_name}</span>`
-            ).join('');
-        } else {
-            childGroupsDiv.innerHTML = '<span class="group-tag empty">No direct groups</span>';
+        // Filter and render direct child members (users and groups)
+        const directUsers = directMembers.filter(member => member.member_type.label === 'user');
+        const directGroups = directMembers.filter(member => member.member_type.label === 'group');
+        console.log(`Direct users for ${groupName}:`, directUsers);
+        console.log(`Direct groups for ${groupName}:`, directGroups);
+        
+        const childMembersDiv = document.getElementById('group-child-groups');
+        const memberTags = [];
+        if (directUsers.length > 0) {
+            memberTags.push(...directUsers.map(member => 
+                `<span class="user-tag">👤 ${member.member_name}</span>`
+            ));
+        }
+        if (directGroups.length > 0) {
+            memberTags.push(...directGroups.map(member => 
+                `<span class="group-tag">👥 ${member.member_name}</span>`
+            ));
         }
         
-        // Filter and render all child groups (including indirect)
-        const allChildGroups = allMembers.filter(member => member.member_type.label === 'group');
-        console.log(`All child groups for ${groupName}:`, allChildGroups);
-        const allChildGroupsDiv = document.getElementById('group-all-child-groups');
-        if (allChildGroups.length > 0) {
-            allChildGroupsDiv.innerHTML = allChildGroups.map(member => 
-                `<span class="group-tag">${member.member_name}</span>`
-            ).join('');
+        if (memberTags.length > 0) {
+            childMembersDiv.innerHTML = memberTags.join('');
         } else {
-            allChildGroupsDiv.innerHTML = '<span class="group-tag empty">No groups</span>';
+            childMembersDiv.innerHTML = '<span class="group-tag empty">No direct members</span>';
+        }
+        
+        // Filter and render all child members (including indirect)
+        const allUsers = allMembers.filter(member => member.member_type.label === 'user');
+        const allGroups = allMembers.filter(member => member.member_type.label === 'group');
+        console.log(`All users for ${groupName}:`, allUsers);
+        console.log(`All groups for ${groupName}:`, allGroups);
+        
+        const allChildMembersDiv = document.getElementById('group-all-child-groups');
+        const allMemberTags = [];
+        if (allUsers.length > 0) {
+            allMemberTags.push(...allUsers.map(member => 
+                `<span class="user-tag">👤 ${member.member_name}</span>`
+            ));
+        }
+        if (allGroups.length > 0) {
+            allMemberTags.push(...allGroups.map(member => 
+                `<span class="group-tag">👥 ${member.member_name}</span>`
+            ));
+        }
+        
+        if (allMemberTags.length > 0) {
+            allChildMembersDiv.innerHTML = allMemberTags.join('');
+        } else {
+            allChildMembersDiv.innerHTML = '<span class="group-tag empty">No members</span>';
         }
         
         const totalDuration = performance.now() - startTime;
@@ -446,4 +478,97 @@ window.onclick = function(event) {
             modal.style.display = 'none';
         }
     });
+}
+
+// Helper function to populate user group dropdown
+function populateUserGroupDropdown(username, currentGroups) {
+    const select = document.getElementById('user-group-select');
+    select.innerHTML = '<option value="">Select a group to add...</option>';
+    
+    // Filter out groups the user is already a member of
+    const currentGroupNames = currentGroups.map(g => g.group_name);
+    const availableGroups = groups.filter(group => !currentGroupNames.includes(group.group_name));
+    
+    availableGroups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group.group_name;
+        option.textContent = group.group_name;
+        select.appendChild(option);
+    });
+    
+    // Enable/disable button based on available options
+    const button = document.getElementById('add-user-to-group-btn');
+    button.disabled = availableGroups.length === 0;
+}
+
+// Helper function to populate group parent dropdown
+function populateGroupParentDropdown(groupName, currentParents) {
+    const select = document.getElementById('group-parent-select');
+    select.innerHTML = '<option value="">Select a parent group...</option>';
+    
+    // Filter out groups that are already parents and the group itself
+    const currentParentNames = currentParents.map(g => g.group_name);
+    const availableGroups = groups.filter(group => 
+        !currentParentNames.includes(group.group_name) && 
+        group.group_name !== groupName
+    );
+    
+    availableGroups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group.group_name;
+        option.textContent = group.group_name;
+        select.appendChild(option);
+    });
+    
+    // Enable/disable button based on available options
+    const button = document.getElementById('add-group-to-parent-btn');
+    button.disabled = availableGroups.length === 0;
+}
+
+// Add user to group
+async function addUserToGroup() {
+    const username = currentUser?.username;
+    const groupName = document.getElementById('user-group-select').value;
+    
+    if (!username || !groupName) {
+        showError('Please select a group to add the user to.');
+        return;
+    }
+    
+    try {
+        await apiRequest(`/groups/${groupName}/members`, 'POST', { username });
+        showSuccess(`User ${username} added to group ${groupName} successfully!`);
+        
+        // Reload user groups to show updated data
+        await loadUserGroups(username);
+        
+        // Reset dropdown
+        document.getElementById('user-group-select').value = '';
+    } catch (error) {
+        showError('Failed to add user to group: ' + error.message);
+    }
+}
+
+// Add group to parent group
+async function addGroupToParent() {
+    const groupName = currentGroup?.group_name;
+    const parentGroupName = document.getElementById('group-parent-select').value;
+    
+    if (!groupName || !parentGroupName) {
+        showError('Please select a parent group.');
+        return;
+    }
+    
+    try {
+        await apiRequest(`/groups/${parentGroupName}/members`, 'POST', { group_name: groupName });
+        showSuccess(`Group ${groupName} added to parent group ${parentGroupName} successfully!`);
+        
+        // Reload group relationships to show updated data
+        await loadGroupRelationships(groupName);
+        
+        // Reset dropdown
+        document.getElementById('group-parent-select').value = '';
+    } catch (error) {
+        showError('Failed to add group to parent: ' + error.message);
+    }
 }
